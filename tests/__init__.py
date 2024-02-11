@@ -5,11 +5,8 @@ import torch
 
 import audio
 import preprocess_dataset
+import spectrogram
 
 
-TEST_FLAC = "tests/000000.flac"
-TEST_WAV = "tests/000000.wav"
-TESTDATA_PATH = "tests/testdata"
-
-CONSEC_PATH = f"{TESTDATA_PATH}/consec"
-NONCONSEC_PATH = f"{TESTDATA_PATH}/nonconsec"
+TEST_FLAC = "tests/test_44100Hz.flac"
+TEST_WAV = "tests/test_16000Hz.wav"

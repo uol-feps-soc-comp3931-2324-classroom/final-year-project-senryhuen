@@ -73,7 +73,7 @@ def audio_to_spectrogram(
 
     """
     window = window_fn(n_fft)
-    return torch.stft(audio, n_fft, hop_length, window=window, return_complex=True)
+    return torch.real(torch.stft(audio, n_fft, hop_length, window=window, return_complex=True))
 
 
 def audio_to_mono(audio: torch.Tensor) -> torch.Tensor:

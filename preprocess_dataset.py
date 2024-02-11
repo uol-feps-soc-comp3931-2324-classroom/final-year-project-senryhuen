@@ -2,13 +2,11 @@ import os
 import torch
 
 import audio
+import spectrogram
 
 
 valid_audio_extensions = [".mp3", ".wav", ".flac"]
-last_idx = {
-    "speech-16000": -1,
-    "music-44100": -1,
-}
+last_idx = {}
 
 
 def split_audio(
@@ -203,6 +201,7 @@ def _preprocess_audio(
     for root, _, files in os.walk(src_path):
         for file in files:
             file_extension = os.path.splitext(file)[1].lower()
+
             if file_extension in valid_audio_extensions:
                 orig_audio, sr = audio.load_audio(os.path.join(root, file))
                 clips = split_audio(orig_audio, sample_rate=sr)
@@ -215,9 +214,12 @@ def _preprocess_audio(
 
                     audio.save_audio(save_path, clip, sr)
 
-                    # spec = audio.audio_to_spectrogram(audio_tensor)
-                    # spec_save_path = get_spectrogram_save_location(save_path, spec_format)
-                    ## TBC: save spectrogram image
+                    # save corresponding spectrogram (multichannels merged if necessary)
+                    spec = audio.audio_to_spectrogram(audio.audio_to_mono(clip))
+                    spec_save_path = get_spectrogram_save_location(
+                        save_path, spec_format
+                    )
+                    spectrogram.save_spectrogram_tiff(spec, spec_save_path)
 
                 src_count += 1
                 segment_count += len(clips)
@@ -236,6 +238,6 @@ if __name__ == "__main__":
     # print(torchaudio.utils.ffmpeg_utils.get_audio_decoders())
     # print(torchaudio.utils.sox_utils.list_read_formats())
 
-    count, new_count = _preprocess_audio(src_path="data/orig_audio", src_limit=1)
+    count, new_count = _preprocess_audio(src_path="data/orig_audio/music", src_limit=1)
 
     print(f"{count} audio files processed, split into {new_count} clips")

@@ -1,6 +1,11 @@
 from tests import *
 
 
+TESTDATA_PATH = "tests/testdata_for_preprocess"
+CONSEC_PATH = f"{TESTDATA_PATH}/consec"
+NONCONSEC_PATH = f"{TESTDATA_PATH}/nonconsec"
+
+
 class TestPreprocessingAudio(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:

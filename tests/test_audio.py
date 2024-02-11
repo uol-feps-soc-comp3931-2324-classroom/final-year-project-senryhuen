@@ -1,6 +1,9 @@
 from tests import *
 
 
+TESTDATA_PATH = "tests/testdata_for_audio"
+
+
 class TestAudioModule(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
