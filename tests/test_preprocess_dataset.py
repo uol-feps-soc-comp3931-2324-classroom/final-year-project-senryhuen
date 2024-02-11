@@ -9,6 +9,10 @@ NONCONSEC_PATH = f"{TESTDATA_PATH}/nonconsec"
 class TestPreprocessingAudio(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
+        # make sure TESTDATA_PATH does not exist
+        if os.path.exists(TESTDATA_PATH):
+            shutil.rmtree(TESTDATA_PATH)
+
         os.makedirs(TESTDATA_PATH)
 
         if not os.path.exists(TEST_FLAC):

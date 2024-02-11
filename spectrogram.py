@@ -58,5 +58,5 @@ def save_spectrogram_tiff(spectrogram: torch.Tensor, save_path: str):
 
     img = spectrogram.numpy()
     img = librosa.amplitude_to_db(img, ref=1)
-    img = np.flip(img, axis=1)  # flip  so frequency is increasing instead (along x-axis)
+    img = np.flip(img, axis=1)  # flip so frequency is increasing instead (along x-axis)
     skimage.io.imsave(save_path, img)

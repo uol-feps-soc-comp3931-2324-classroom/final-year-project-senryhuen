@@ -6,6 +6,14 @@ import torchaudio
 import librosa
 
 
+STFT_CONFIG = {
+    "n_fft": 2048,
+    "hop_length": 512,
+    "window_length": 2048,
+    "window_fn": torch.hamming_window,
+}
+
+
 def load_audio(filepath: str, multichannel: str = "keep") -> tuple[torch.Tensor, int]:
     """Load audio from a file into a torch.Tensor
 
@@ -63,9 +71,9 @@ def save_audio(save_filepath: str, audio: torch.Tensor, sample_rate: int):
 
 def audio_to_spectrogram(
     audio: torch.Tensor,
-    n_fft: int = 2048,
-    hop_length: int = 512,
-    window_fn: Callable = torch.hamming_window,
+    n_fft: int = STFT_CONFIG["n_fft"],
+    hop_length: int = STFT_CONFIG["hop_length"],
+    window_fn: Callable = STFT_CONFIG["window_fn"],
 ) -> torch.Tensor:
     """Passes through to `torch.stft()`
 
