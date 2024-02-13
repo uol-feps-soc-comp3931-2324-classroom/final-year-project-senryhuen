@@ -1,7 +1,7 @@
 import torch
 import torchaudio
 
-from audio import STFT_CONFIG
+from utils.audio import STFT_CONFIG
 
 
 def griffinlim(spectrogram: torch.Tensor, n_iter: int = 100) -> torch.Tensor:

@@ -115,3 +115,16 @@ class TestPreprocessingAudio(unittest.TestCase):
             os.path.splitext(os.path.basename(save_location))[0],
             os.path.splitext(os.path.basename(spec_save_location))[0],
         )
+
+    def test_remove_hidden_files(self):
+        files = ["0", "0.txt", ".DS_Store", "._0.txt", "a.py"]
+        cleaned_files = ["0", "0.txt", "a.py"]
+        self.assertEqual(cleaned_files, preprocess_dataset.remove_hidden_files(files))
+
+    def test_remove_hidden_files_from_cleaned_list(self):
+        cleaned_files = ["0", "0.txt", "a.py"]
+        self.assertEqual(cleaned_files, preprocess_dataset.remove_hidden_files(cleaned_files))
+
+    def test_remove_hidden_files_from_empty_list(self):
+        files = []
+        self.assertEqual([], preprocess_dataset.remove_hidden_files(files))

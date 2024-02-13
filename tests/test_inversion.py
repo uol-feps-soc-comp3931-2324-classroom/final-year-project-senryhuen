@@ -8,7 +8,7 @@ class TestInversionModule(unittest.TestCase):
     def test_griffinlim(self):
         audio_tensor, _ = audio.load_audio(TEST_FLAC, multichannel="first")
         spec = audio.audio_to_spectrogram(audio_tensor)
-        reconstructed_audio_tensor = inversion.griffinlim(spec)
+        reconstructed_audio_tensor = spectrograminversion.griffinlim(spec)
 
         # test reconstruct has correct shape
         self.assertEqual(len(audio_tensor.shape), 2)
