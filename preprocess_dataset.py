@@ -250,6 +250,6 @@ if __name__ == "__main__":
     # print(torchaudio.utils.ffmpeg_utils.get_audio_decoders())
     # print(torchaudio.utils.sox_utils.list_read_formats())
 
-    count, new_count = _preprocess_audio(src_path="data/orig_audio/music", src_limit=1)
+    count, new_count = _preprocess_audio(src_path="data/orig_audio", src_limit=None)
 
     print(f"{count} audio files processed, split into {new_count} clips")
