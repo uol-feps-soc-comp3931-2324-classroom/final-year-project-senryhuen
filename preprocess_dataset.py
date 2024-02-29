@@ -1,7 +1,10 @@
 import os
 import torch
+import pandas as pd
 
 from utils import audio, spectrogram
+
+DATA_DIR = "data"
 
 unwanted_files = [".DS_Store"]
 valid_audio_extensions = [".mp3", ".wav", ".flac"]
@@ -98,13 +101,13 @@ def get_last_idx(idx_type: str, sample_rate: int):
         sample_rate (int): sample rate of processed audio clip.
 
     Raises:
-        ValueError: invalid save location "data/audio/`idx_type`/
+        ValueError: invalid save location "{DATA_DIR}/audio/`idx_type`/
             samplerate-`sample_rate`", filenames must be consecutive
             and padded to 6 digits and start from "000000".
 
     """
     idx = f"{idx_type}-{sample_rate}"
-    idx_filepath = f"data/audio/{idx_type}/samplerate-{sample_rate}"
+    idx_filepath = f"{DATA_DIR}/audio/{idx_type}/samplerate-{sample_rate}"
 
     if os.path.exists(idx_filepath):
         is_consecutive, highest_idx = check_idx_consecutive(idx_filepath)
@@ -130,7 +133,7 @@ def get_save_location(sample_rate: int, extension: str, is_speech: bool = False)
 
     Returns:
         str: relative file path to save new processed audio clip,
-            always in the format "data/audio/{music || speech}/
+            always in the format "{DATA_DIR}/audio/{music || speech}/
             samplerate-{sample_rate}/{incrementing index:06}
             {extension}".
 
@@ -145,9 +148,7 @@ def get_save_location(sample_rate: int, extension: str, is_speech: bool = False)
         get_last_idx(idx_type, sample_rate)
 
     last_idx[idx] += 1
-    return (
-        f"data/audio/{idx_type}/samplerate-{sample_rate}/{last_idx[idx]:06}{extension}"
-    )
+    return f"{DATA_DIR}/audio/{idx_type}/samplerate-{sample_rate}/{last_idx[idx]:06}{extension}"
 
 
 def get_spectrogram_save_location(audio_save_location: str, extension: str) -> str:
@@ -170,11 +171,59 @@ def get_spectrogram_save_location(audio_save_location: str, extension: str) -> s
     return (
         os.path.splitext(
             os.path.normpath(audio_save_location).replace(
-                "data/audio", "data/spectrograms"
+                f"{DATA_DIR}/audio", f"{DATA_DIR}/spectrograms"
             )
         )[0]
         + extension
     )
+
+
+def create_attributes_csv():
+    """Create csv containing attributes of processed data
+
+    Saved in "{DATA_DIR}/attributes.csv",  for use by custom pytorch Dataset.
+
+    """
+    attributes = []
+
+    data_dir_audio = os.path.join(DATA_DIR, "audio")
+    for root, _, files in os.walk(data_dir_audio):
+        for file in files:
+            file_path = os.path.join(root, file)
+            file_extension = os.path.splitext(file)[1]
+
+            if file_extension not in valid_audio_extensions:
+                continue
+
+            spec_path = get_spectrogram_save_location(file_path, ".tiff")
+            spec_extension = os.path.splitext(spec_path)[1]
+
+            path_dirs = root.replace(data_dir_audio, "").split("/")[1:]
+            is_music = bool(path_dirs[0] == "music")
+            samplerate = int(path_dirs[1].replace("samplerate-", ""))
+
+            attributes.append(
+                (
+                    file_path,
+                    file_extension,
+                    spec_path,
+                    spec_extension,
+                    samplerate,
+                    is_music,
+                )
+            )
+
+    pd.DataFrame(
+        attributes,
+        columns=[
+            "audio_filepath",
+            "audio_format",
+            "spectrogram_filepath",
+            "spectrogram_format",
+            "samplerate",
+            "is_music",
+        ],
+    ).to_csv(os.path.join(DATA_DIR, "attributes.csv"))
 
 
 def _preprocess_audio(
@@ -250,6 +299,8 @@ if __name__ == "__main__":
     # print(torchaudio.utils.ffmpeg_utils.get_audio_decoders())
     # print(torchaudio.utils.sox_utils.list_read_formats())
 
-    count, new_count = _preprocess_audio(src_path="data/orig_audio", src_limit=None)
+    count, new_count = _preprocess_audio(src_path=f"{DATA_DIR}/orig_audio", src_limit=None)
 
     print(f"{count} audio files processed, split into {new_count} clips")
+
+    create_attributes_csv()
