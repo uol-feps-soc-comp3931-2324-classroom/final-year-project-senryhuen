@@ -80,6 +80,13 @@ class TestPreprocessingAudio(unittest.TestCase):
         )
         self.assertEqual(len(clips), 0)
 
+    def test_split_audio_fixed_samplerate(self):
+        audio_tensor, _ = audio.load_audio(TEST_WAV, multichannel="keep")
+        clips = preprocess_dataset.split_audio_fixed(audio_tensor, 32000)
+        self.assertEqual(len(clips), 2)
+        self.assertEqual(list(clips[0].shape), [1, 32000])
+        self.assertEqual(list(clips[1].shape), [1, 32000])
+
     def test_check_idx_consecutive_when_true(self):
         is_consec, last_idx = preprocess_dataset.check_idx_consecutive(CONSEC_PATH)
         self.assertTrue(is_consec)

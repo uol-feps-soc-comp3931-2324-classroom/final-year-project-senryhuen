@@ -36,16 +36,45 @@ def split_audio(
     segments = []
 
     if segment_length <= 0 or sample_rate <= 0:
-        return []
+        return segments
 
     increment = segment_length * sample_rate
+    return split_audio_fixed(audio_tensor, increment)
+
+
+def split_audio_fixed(
+    audio_tensor: torch.Tensor, samples_per_segment: int = 2**17
+) -> list:
+    """Split `audio_tensor` into audio tensors with fixed no. samples
+
+    If `audio_tensor` does not divide by `samples_per_segment`
+    perfectly, the last segment is discarded.
+
+    Args:
+        audio_tensor (torch.Tensor): tensor with dimensions
+            [channels, time], where each element in the first dimension
+            is a channel, and each element in that element (second
+            dimension) is an amplitude value at a point in time.
+        samples_per_segment (int, optional): desired number of samples
+            per audio segments. Defaults to 2**17.
+
+    Returns:
+        list: list of audio tensors, each being a segment from
+            `audio_tensor`.
+
+    """
+    segments = []
+
+    if samples_per_segment <= 0:
+        return segments
+
     start = 0
-    end = increment
+    end = samples_per_segment
 
     while end <= audio_tensor.shape[-1]:
         segments.append(audio_tensor[:, start:end])
-        start += increment
-        end += increment
+        start += samples_per_segment
+        end += samples_per_segment
 
     return segments
 
@@ -236,9 +265,9 @@ def _preprocess_audio(
 
     Duplicates will not be detected if run on the same audio again.
 
-    Splits audio into fixed length segments, creates corresponding
-    spectrograms for each segment. Segments sorted by type (speech or
-    music) and sample rate.
+    Splits audio into segments with fixed no. samples each, creates
+    corresponding spectrograms for each segment. Segments sorted by
+    type (speech or music) and sample rate.
 
     Args:
         src_path (str, optional): path to directory containing audio
@@ -265,7 +294,7 @@ def _preprocess_audio(
 
             if file_extension in valid_audio_extensions:
                 orig_audio, sr = audio.load_audio(os.path.join(root, file))
-                clips = split_audio(orig_audio, sample_rate=sr)
+                clips = split_audio_fixed(orig_audio)
 
                 for clip in clips:
                     if "data/orig_audio/speech" in os.path.normpath(root):
@@ -299,8 +328,16 @@ if __name__ == "__main__":
     # print(torchaudio.utils.ffmpeg_utils.get_audio_decoders())
     # print(torchaudio.utils.sox_utils.list_read_formats())
 
-    count, new_count = _preprocess_audio(src_path=f"{DATA_DIR}/orig_audio", src_limit=None)
+    count, new_count = _preprocess_audio(
+        src_path=f"{DATA_DIR}/orig_audio/music", segment_limit=10000
+    )
 
-    print(f"{count} audio files processed, split into {new_count} clips")
+    print(f"{count} audio/music files processed, split into {new_count} clips")
+
+    count, new_count = _preprocess_audio(
+        src_path=f"{DATA_DIR}/orig_audio/speech", segment_limit=10000
+    )
+
+    print(f"{count} audio/speech files processed, split into {new_count} clips")
 
     create_attributes_csv()
