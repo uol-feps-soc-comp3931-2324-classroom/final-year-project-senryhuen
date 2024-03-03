@@ -17,8 +17,7 @@ def main():
         help="filepath to save output audio file at",
     )
     parser.add_argument(
-        "-sr",
-        "--sample-rate",
+        "sample_rate",
         type=int,
         help="sample rate of spectrogram/audio",
     )
