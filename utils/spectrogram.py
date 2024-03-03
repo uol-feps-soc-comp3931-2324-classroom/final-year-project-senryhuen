@@ -60,3 +60,41 @@ def save_spectrogram_tiff(spectrogram: torch.Tensor, save_path: str):
     img = librosa.amplitude_to_db(img, ref=1)
     img = np.flip(img, axis=1)  # flip so frequency is increasing instead (along x-axis)
     skimage.io.imsave(save_path, img)
+
+
+def merge_to_multichannel(*spec: torch.Tensor) -> torch.Tensor:
+    """Merge multiple spectrogram tensors into one multichannel tensor
+
+    All channels need to be of the same shape.
+
+    Args:
+        *audio (torch.Tensor): spectrograms in the same format as
+            from `torch.stft()`.
+
+    Returns:
+        torch.Tensor: spectrogram in the same format as
+            from `torch.stft()`.
+
+    """
+    return torch.cat(spec, 0)
+
+
+def separate_phase_to_channel(complex_spectrogram: torch.Tensor) -> torch.Tensor:
+    """Separates real and imaginary components into separate channels
+
+    Imaginary components are represented as real numbers, placed in a
+    separate channel.
+
+    Args:
+        complex_spectrogram (torch.Tensor): complex-valued spectrogram
+            in the same format as from `torch.stft()`.
+
+    Returns:
+        torch.Tensor: real-valued spectrogram in the same format as
+            from `torch.stft()`, except channels may represent real or
+            imaginary components.
+
+    """
+    return merge_to_multichannel(
+        torch.real(complex_spectrogram), torch.imag(complex_spectrogram)
+    )

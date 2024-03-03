@@ -135,3 +135,19 @@ class TestPreprocessingAudio(unittest.TestCase):
     def test_remove_hidden_files_from_empty_list(self):
         files = []
         self.assertEqual([], preprocess_dataset.remove_hidden_files(files))
+
+    def test_precompute_DNN_dataset_output_shape(self):
+        audio_tensor, _ = audio.load_audio(TEST_WAV, multichannel="first")
+        spec = audio.audio_to_spectrogram(audio_tensor)
+        output = preprocess_dataset.precompute_DNN_dataset(audio_tensor)
+
+        # check returns a tuple
+        self.assertEqual(len(output), 2)
+
+        # check first spectrogram has 6 channels, second has 2 channels
+        self.assertEqual(output[0].shape[0], 6)
+        self.assertEqual(output[1].shape[0], 2)
+
+        # test spectrograms have the same shape with exception of first dimension (channels)
+        self.assertEqual(output[0].shape[1:], spec.shape[1:])
+        self.assertEqual(output[1].shape[1:], spec.shape[1:])
