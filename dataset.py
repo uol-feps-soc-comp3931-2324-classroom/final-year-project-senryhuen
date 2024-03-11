@@ -32,7 +32,6 @@ class DNNDataset(Dataset):
         entry_path = self.attributes.iloc[index, 3]
         inputs, target = torch.load(entry_path)
         return inputs, target
-        ## check .pt pytorch works with tuples not just tensors, check loading recovers the tuple, and returning here passes the tuple without wrapping in another tuple
 
 
 if __name__ == "__main__":
