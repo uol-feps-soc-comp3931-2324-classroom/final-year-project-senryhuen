@@ -118,3 +118,23 @@ class TestSpectrogramModule(unittest.TestCase):
         # test real and imaginary components are the same in the separated channels
         self.assertTrue(torch.all(torch.eq(torch.real(spec), spec_separated[0:2, :, :])))
         self.assertTrue(torch.all(torch.eq(torch.imag(spec), spec_separated[2:, :, :])))
+
+    def test_merge_separate_phase_channel(self):
+        audio_tensor, _ = audio.load_audio(TEST_FLAC, multichannel="first")
+        spec = audio.audio_to_spectrogram(audio_tensor, discard_phase=False)
+        spec_separated = spectrogram.separate_phase_to_channel(spec)
+        spec_separated_merged = spectrogram.merge_separate_phase_channel(spec_separated)
+        self.assertTrue(torch.all(torch.eq(spec, spec_separated_merged)))
+
+    def test_merge_separate_phase_channel_with_too_many_channels(self):
+        audio_tensor, _ = audio.load_audio(TEST_FLAC, multichannel="keep")
+        spec = audio.audio_to_spectrogram(audio_tensor, discard_phase=False)
+        spec_separated = spectrogram.separate_phase_to_channel(spec)
+        spec_separated_merged = spectrogram.merge_separate_phase_channel(spec_separated)
+        self.assertIsNone(spec_separated_merged)
+
+    def test_merge_separate_phase_channel_with_not_enough_channels(self):
+        audio_tensor, _ = audio.load_audio(TEST_FLAC, multichannel="first")
+        spec = audio.audio_to_spectrogram(audio_tensor, discard_phase=True)
+        spec_merged = spectrogram.merge_separate_phase_channel(spec)
+        self.assertIsNone(spec_merged)

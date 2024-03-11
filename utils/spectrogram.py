@@ -98,3 +98,27 @@ def separate_phase_to_channel(complex_spectrogram: torch.Tensor) -> torch.Tensor
     return merge_to_multichannel(
         torch.real(complex_spectrogram), torch.imag(complex_spectrogram)
     )
+
+
+def merge_separate_phase_channel(two_channel_spectrogram: torch.Tensor) -> torch.Tensor:
+    """Merge two channels into single channel complex spectrogram
+
+    Args:
+        two_channel_spectrogram (torch.Tensor): real-valued spectrogram
+            in the same format as from `torch.stft()`, with two
+            channels, where the first channel represents the real
+            component, and second channel represents the imaginary
+            component.
+
+    Returns:
+        torch.Tensor: single channel complex-valued spectrogram in the
+            same format as from `torch.stft()`.
+
+    """
+    if two_channel_spectrogram.shape[0] != 2 or len(two_channel_spectrogram.shape) != 3:
+        return None  # bad input spectrogram shape
+
+    return torch.complex(
+        two_channel_spectrogram[0:1, :, :],
+        two_channel_spectrogram[1:, :, :],
+    )
