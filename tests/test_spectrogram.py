@@ -24,15 +24,15 @@ class TestSpectrogramModule(unittest.TestCase):
         if os.path.exists(TESTDATA_PATH):
             shutil.rmtree(TESTDATA_PATH)
 
-    def test_save_spectrogram_tiff(self):
+    def test_save_spectrogram(self):
         audio_tensor, _ = audio.load_audio(TEST_FLAC, multichannel="first")
         spec = audio.audio_to_spectrogram(audio_tensor)
 
         spec_save_path = f"{TESTDATA_PATH}/test_spec.tiff"
-        spectrogram.save_spectrogram_tiff(spec, spec_save_path)
+        spectrogram.save_spectrogram(spec, spec_save_path)
 
         self.assertTrue(os.path.exists(spec_save_path))
-        loaded_spec = spectrogram.load_spectrogram_tiff(spec_save_path)
+        loaded_spec = spectrogram.load_spectrogram(spec_save_path)
 
         self.assertEqual(list(spec.shape), list(loaded_spec.shape))
         self.assertTrue(
@@ -45,7 +45,7 @@ class TestSpectrogramModule(unittest.TestCase):
 
         spec_save_path = f"{TESTDATA_PATH}/test_spec.invalid"
         self.assertRaises(
-            ValueError, spectrogram.save_spectrogram_tiff, spec, spec_save_path
+            ValueError, spectrogram.save_spectrogram, spec, spec_save_path
         )
         self.assertFalse(os.path.exists(spec_save_path))
 
@@ -55,7 +55,7 @@ class TestSpectrogramModule(unittest.TestCase):
 
         spec_save_path = f"{TESTDATA_PATH}/test_spec_multi.tiff"
         self.assertRaises(
-            ValueError, spectrogram.save_spectrogram_tiff, spec, spec_save_path
+            ValueError, spectrogram.save_spectrogram, spec, spec_save_path
         )
         self.assertFalse(os.path.exists(spec_save_path))
 
