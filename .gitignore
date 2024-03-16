@@ -15,3 +15,6 @@ data/spectrograms/*
 data/DNN_precomputed/*
 
 attributes.csv
+
+demo
+

@@ -49,7 +49,7 @@ def main():
     )
     args = parser.parse_args()
 
-    spec = spectrogram.load_spectrogram_tiff(args.input_spectrogram_filepath)
+    spec = spectrogram.load_spectrogram(args.input_spectrogram_filepath)
 
     # audio reconstruction using method chosen from args
     if args.method == "griffinlim":
