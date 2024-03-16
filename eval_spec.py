@@ -8,7 +8,7 @@ def main():
     parser.add_argument(
         "spectrogram_filepath",
         type=str,
-        help="filepath to spectrogram image (.tiff) of original audio",
+        help="filepath to spectrogram image of original audio",
     )
     parser.add_argument(
         "audio_filepath",
@@ -29,7 +29,7 @@ def main():
     )
     args = parser.parse_args()
 
-    spec = spectrogram.load_spectrogram_tiff(args.spectrogram_filepath)
+    spec = spectrogram.load_spectrogram(args.spectrogram_filepath)
     recon_audio_tensor, _ = audio.load_audio(args.audio_filepath)
     other_spec = audio.audio_to_spectrogram(recon_audio_tensor)
 

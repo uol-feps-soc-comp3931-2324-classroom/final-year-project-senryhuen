@@ -430,7 +430,7 @@ def _preprocess_audio(
                     # spec_save_path = get_spectrogram_save_location(
                     #     save_path, spec_format
                     # )
-                    # spectrogram.save_spectrogram_tiff(spec, spec_save_path)
+                    # spectrogram.save_spectrogram(spec, spec_save_path)
 
                     segment_count += 1
                     if segment_limit and segment_count >= segment_limit:
