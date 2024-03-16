@@ -80,6 +80,13 @@ class TestPreprocessingAudio(unittest.TestCase):
         )
         self.assertEqual(len(clips), 0)
 
+    def test_split_audio_fixed_samplerate(self):
+        audio_tensor, _ = audio.load_audio(TEST_WAV, multichannel="keep")
+        clips = preprocess_dataset.split_audio_fixed(audio_tensor, 32000)
+        self.assertEqual(len(clips), 2)
+        self.assertEqual(list(clips[0].shape), [1, 32000])
+        self.assertEqual(list(clips[1].shape), [1, 32000])
+
     def test_check_idx_consecutive_when_true(self):
         is_consec, last_idx = preprocess_dataset.check_idx_consecutive(CONSEC_PATH)
         self.assertTrue(is_consec)
@@ -128,3 +135,19 @@ class TestPreprocessingAudio(unittest.TestCase):
     def test_remove_hidden_files_from_empty_list(self):
         files = []
         self.assertEqual([], preprocess_dataset.remove_hidden_files(files))
+
+    def test_precompute_DNN_dataset_output_shape(self):
+        audio_tensor, _ = audio.load_audio(TEST_WAV, multichannel="first")
+        spec = audio.audio_to_spectrogram(audio_tensor)
+        output = preprocess_dataset.precompute_DNN_dataset(audio_tensor)
+
+        # check returns a tuple
+        self.assertEqual(len(output), 2)
+
+        # check first spectrogram has 6 channels, second has 2 channels
+        self.assertEqual(output[0].shape[0], 6)
+        self.assertEqual(output[1].shape[0], 2)
+
+        # test spectrograms have the same shape with exception of first dimension (channels)
+        self.assertEqual(output[0].shape[1:], spec.shape[1:])
+        self.assertEqual(output[1].shape[1:], spec.shape[1:])

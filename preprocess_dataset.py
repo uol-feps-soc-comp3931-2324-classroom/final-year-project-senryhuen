@@ -1,7 +1,11 @@
 import os
 import torch
+import numpy as np
+import pandas as pd
 
 from utils import audio, spectrogram
+
+DATA_DIR = "data"
 
 unwanted_files = [".DS_Store"]
 valid_audio_extensions = [".mp3", ".wav", ".flac"]
@@ -33,18 +37,112 @@ def split_audio(
     segments = []
 
     if segment_length <= 0 or sample_rate <= 0:
-        return []
+        return segments
 
     increment = segment_length * sample_rate
+    return split_audio_fixed(audio_tensor, increment)
+
+
+def split_audio_fixed(
+    audio_tensor: torch.Tensor, samples_per_segment: int = 2**15
+) -> list:
+    """Split `audio_tensor` into audio tensors with fixed no. samples
+
+    If `audio_tensor` does not divide by `samples_per_segment`
+    perfectly, the last segment is discarded.
+
+    Args:
+        audio_tensor (torch.Tensor): tensor with dimensions
+            [channels, time], where each element in the first dimension
+            is a channel, and each element in that element (second
+            dimension) is an amplitude value at a point in time.
+        samples_per_segment (int, optional): desired number of samples
+            per audio segments. Defaults to 2**15.
+
+    Returns:
+        list: list of audio tensors, each being a segment from
+            `audio_tensor`.
+
+    """
+    segments = []
+
+    if samples_per_segment <= 0:
+        return segments
+
     start = 0
-    end = increment
+    end = samples_per_segment
 
     while end <= audio_tensor.shape[-1]:
         segments.append(audio_tensor[:, start:end])
-        start += increment
-        end += increment
+        start += samples_per_segment
+        end += samples_per_segment
 
     return segments
+
+
+def _reverse_decibel(val: int):
+    return 10 ** (val / 10)
+
+
+def precompute_DNN_dataset(
+    audio_tensor: torch.Tensor,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Precompute tensors to be used for deep-griffinlim DNN dataset
+
+    Args:
+        audio_tensor (torch.Tensor): tensor with dimensions
+            [channels, time], where each element in the first dimension
+            is a channel, and each element in that element (second
+            dimension) is an amplitude value at a point in time.
+
+    Returns:
+        tuple[torch.Tensor, torch.Tensor]: [0] 6 channel tensor for
+            input for DNN, [1] 2 channel tensor for target output of
+            DNN. Tensors are complex-valued spectrograms, where real
+            and imaginary components are represented as separate
+            channels.
+
+    """
+    # original spectrogram
+    complex_spec = audio.audio_to_spectrogram(
+        audio.audio_to_mono(audio_tensor), discard_phase=False
+    )
+
+    # adding noise to simulating lossiness from previous reconstruction iterations
+    gauss_noise = torch.complex(
+        torch.randn_like(torch.real(complex_spec)),
+        torch.randn_like(torch.imag(complex_spec)),
+    )
+
+    random_snr = _reverse_decibel(np.random.rand() * -30)
+    noise_scaling_factor = torch.sqrt(
+        torch.mean(torch.abs(complex_spec).square())
+        / (torch.mean(torch.abs(gauss_noise).square()) * random_snr)
+    )
+    noise_added_spec = complex_spec + (noise_scaling_factor * gauss_noise)
+
+    # first GLA-inspired layer in DeGLI sub block (P_A)
+    amplitude_replaced_spec = np.abs(complex_spec) * (
+        noise_added_spec / torch.abs(noise_added_spec)
+    )
+
+    # second GLA-inspired layer in DeGLI sub block (P_C)
+    noise_added_spec_GLA_1_iter = audio.audio_to_spectrogram(
+        audio.complex_spectrogram_to_audio(amplitude_replaced_spec), discard_phase=False
+    )
+
+    # target DNN output
+    residual = complex_spec - noise_added_spec_GLA_1_iter
+
+    # merge input spectrograms into one multichannel spectrogram, treat phase as separate channels
+    input_tensor = spectrogram.separate_phase_to_channel(
+        spectrogram.merge_to_multichannel(
+            noise_added_spec, amplitude_replaced_spec, noise_added_spec_GLA_1_iter
+        )
+    )
+    target_tensor = spectrogram.separate_phase_to_channel(residual)
+
+    return input_tensor, target_tensor
 
 
 def remove_hidden_files(filenames: list) -> list:
@@ -98,13 +196,13 @@ def get_last_idx(idx_type: str, sample_rate: int):
         sample_rate (int): sample rate of processed audio clip.
 
     Raises:
-        ValueError: invalid save location "data/audio/`idx_type`/
+        ValueError: invalid save location "{DATA_DIR}/audio/`idx_type`/
             samplerate-`sample_rate`", filenames must be consecutive
             and padded to 6 digits and start from "000000".
 
     """
     idx = f"{idx_type}-{sample_rate}"
-    idx_filepath = f"data/audio/{idx_type}/samplerate-{sample_rate}"
+    idx_filepath = f"{DATA_DIR}/audio/{idx_type}/samplerate-{sample_rate}"
 
     if os.path.exists(idx_filepath):
         is_consecutive, highest_idx = check_idx_consecutive(idx_filepath)
@@ -130,7 +228,7 @@ def get_save_location(sample_rate: int, extension: str, is_speech: bool = False)
 
     Returns:
         str: relative file path to save new processed audio clip,
-            always in the format "data/audio/{music || speech}/
+            always in the format "{DATA_DIR}/audio/{music || speech}/
             samplerate-{sample_rate}/{incrementing index:06}
             {extension}".
 
@@ -145,9 +243,7 @@ def get_save_location(sample_rate: int, extension: str, is_speech: bool = False)
         get_last_idx(idx_type, sample_rate)
 
     last_idx[idx] += 1
-    return (
-        f"data/audio/{idx_type}/samplerate-{sample_rate}/{last_idx[idx]:06}{extension}"
-    )
+    return f"{DATA_DIR}/audio/{idx_type}/samplerate-{sample_rate}/{last_idx[idx]:06}{extension}"
 
 
 def get_spectrogram_save_location(audio_save_location: str, extension: str) -> str:
@@ -170,11 +266,104 @@ def get_spectrogram_save_location(audio_save_location: str, extension: str) -> s
     return (
         os.path.splitext(
             os.path.normpath(audio_save_location).replace(
-                "data/audio", "data/spectrograms"
+                f"{DATA_DIR}/audio", f"{DATA_DIR}/spectrograms"
             )
         )[0]
         + extension
     )
+
+
+def get_precomputed_data_save_location(audio_save_location: str) -> str:
+    """Get relative file path to save precomputed data for DNN
+
+    Precomputed data corresponds to a new processed audio clip.
+
+    Args:
+        audio_save_location (str): relative file path of the
+            corresponding new processed audio clip.
+
+    Returns:
+        str: relative file path to save '.pt' object using pytorch,
+            which will have the same filename as the
+            `audio_save_location' but with a '.pt' file extension and
+            under a different root folder.
+
+    """
+    return (
+        os.path.splitext(
+            os.path.normpath(audio_save_location).replace(
+                f"{DATA_DIR}/audio", f"{DATA_DIR}/DNN_precomputed"
+            )
+        )[0]
+        + ".pt"
+    )
+
+
+def save_precomputed_DNN_dataset(
+    entry: tuple[torch.Tensor, torch.Tensor], save_path: str
+):
+    """Passes through to `torch.save()`
+
+    Refer to "https://pytorch.org/docs/stable/generated/torch.save.html".
+
+    """
+    save_dir = os.path.dirname(save_path)
+    if not os.path.exists(save_dir) and save_path[:5] == "data/":
+        os.makedirs(save_dir)
+
+    torch.save(entry, save_path)
+
+
+def create_attributes_csv():
+    """Create csv containing attributes of processed data
+
+    Saved in "{DATA_DIR}/attributes.csv",  for use by custom pytorch Dataset.
+
+    """
+    attributes = []
+
+    data_dir_audio = os.path.join(DATA_DIR, "audio")
+    for root, _, files in os.walk(data_dir_audio):
+        for file in files:
+            file_path = os.path.join(root, file)
+            file_extension = os.path.splitext(file)[1]
+
+            if file_extension not in valid_audio_extensions:
+                continue
+
+            precomputed_data_path = get_precomputed_data_save_location(file_path)
+
+            spec_path = get_spectrogram_save_location(file_path, ".tiff")
+            spec_extension = os.path.splitext(spec_path)[1]
+
+            path_dirs = root.replace(data_dir_audio, "").split("/")[1:]
+            is_music = bool(path_dirs[0] == "music")
+            samplerate = int(path_dirs[1].replace("samplerate-", ""))
+
+            attributes.append(
+                (
+                    file_path,
+                    file_extension,
+                    precomputed_data_path,
+                    spec_path,
+                    spec_extension,
+                    samplerate,
+                    is_music,
+                )
+            )
+
+    pd.DataFrame(
+        attributes,
+        columns=[
+            "audio_filepath",
+            "audio_format",
+            "precomputed_data_filepath",
+            "spectrogram_filepath",
+            "spectrogram_format",
+            "samplerate",
+            "is_music",
+        ],
+    ).to_csv(os.path.join(DATA_DIR, "attributes.csv"))
 
 
 def _preprocess_audio(
@@ -187,9 +376,11 @@ def _preprocess_audio(
 
     Duplicates will not be detected if run on the same audio again.
 
-    Splits audio into fixed length segments, creates corresponding
-    spectrograms for each segment. Segments sorted by type (speech or
-    music) and sample rate.
+    Splits audio into segments with fixed no. samples each, creates
+    corresponding spectrograms for each segment. Segments sorted by
+    type (speech or music) and sample rate.
+
+    Also precomputes data for `DNNDataset` to be used within DeGLI.
 
     Args:
         src_path (str, optional): path to directory containing audio
@@ -216,7 +407,7 @@ def _preprocess_audio(
 
             if file_extension in valid_audio_extensions:
                 orig_audio, sr = audio.load_audio(os.path.join(root, file))
-                clips = split_audio(orig_audio, sample_rate=sr)
+                clips = split_audio_fixed(orig_audio)
 
                 for clip in clips:
                     if "data/orig_audio/speech" in os.path.normpath(root):
@@ -226,19 +417,28 @@ def _preprocess_audio(
 
                     audio.save_audio(save_path, clip, sr)
 
-                    # save corresponding spectrogram (multichannels merged if necessary)
-                    spec = audio.audio_to_spectrogram(audio.audio_to_mono(clip))
-                    spec_save_path = get_spectrogram_save_location(
-                        save_path, spec_format
+                    # save corresponding precomputed data for DNN
+                    precomputed_data_save_path = get_precomputed_data_save_location(
+                        save_path
                     )
-                    spectrogram.save_spectrogram_tiff(spec, spec_save_path)
+                    save_precomputed_DNN_dataset(
+                        precompute_DNN_dataset(clip), precomputed_data_save_path
+                    )
+
+                    # save corresponding spectrogram (multichannels merged if necessary)
+                    # spec = audio.audio_to_spectrogram(audio.audio_to_mono(clip))
+                    # spec_save_path = get_spectrogram_save_location(
+                    #     save_path, spec_format
+                    # )
+                    # spectrogram.save_spectrogram(spec, spec_save_path)
+
+                    segment_count += 1
+                    if segment_limit and segment_count >= segment_limit:
+                        return src_count + 1, segment_count
 
                 src_count += 1
-                segment_count += len(clips)
 
-                if (src_limit and src_count >= src_limit) or (
-                    segment_limit and segment_count >= segment_limit
-                ):
+                if src_limit and src_count >= src_limit:
                     return src_count, segment_count
 
     return src_count, segment_count
@@ -250,6 +450,16 @@ if __name__ == "__main__":
     # print(torchaudio.utils.ffmpeg_utils.get_audio_decoders())
     # print(torchaudio.utils.sox_utils.list_read_formats())
 
-    count, new_count = _preprocess_audio(src_path="data/orig_audio", src_limit=None)
+    count, new_count = _preprocess_audio(
+        src_path=f"{DATA_DIR}/orig_audio/music", segment_limit=5000
+    )
 
-    print(f"{count} audio files processed, split into {new_count} clips")
+    print(f"{count} audio/music files processed, split into {new_count} clips")
+
+    count, new_count = _preprocess_audio(
+        src_path=f"{DATA_DIR}/orig_audio/speech", segment_limit=5000
+    )
+
+    print(f"{count} audio/speech files processed, split into {new_count} clips")
+
+    create_attributes_csv()

@@ -9,4 +9,4 @@
 
 
 # Other scripts
-1. preprocess_dataset.py - processes audio files in preparation for use in a dataset (splits into fixed length clips and sorts by type (speech or music) and sample rate)
+1. preprocess_dataset.py - processes audio files in preparation for use in a dataset (splits into fixed length clips and sorts by type (speech or music) and sample rate, generates attributes csv)

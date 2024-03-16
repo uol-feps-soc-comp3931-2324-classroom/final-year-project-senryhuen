@@ -8,7 +8,7 @@ def griffinlim(spectrogram: torch.Tensor, n_iter: int = 100) -> torch.Tensor:
     """Passes through to `torchaudio.functional.griffinlim()`
 
     Assumes `spectrogram` generated using global config in `audio`. The
-    same parameters are passed to `torchaudio.funcitonal.griffinlim()`.
+    same parameters are passed to `torchaudio.functional.griffinlim()`.
 
     Refer to "https://pytorch.org/audio/2.0.0/generated/torchaudio.
     functional.griffinlim.html".

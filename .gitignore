@@ -12,3 +12,9 @@ data/orig_audio/speech/*
 
 data/audio/*
 data/spectrograms/*
+data/DNN_precomputed/*
+
+attributes.csv
+
+demo
+

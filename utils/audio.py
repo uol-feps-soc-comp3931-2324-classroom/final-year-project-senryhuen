@@ -74,6 +74,7 @@ def audio_to_spectrogram(
     n_fft: int = STFT_CONFIG["n_fft"],
     hop_length: int = STFT_CONFIG["hop_length"],
     window_fn: Callable = STFT_CONFIG["window_fn"],
+    discard_phase: bool = True,
 ) -> torch.Tensor:
     """Passes through to `torch.stft()`
 
@@ -81,7 +82,29 @@ def audio_to_spectrogram(
 
     """
     window = window_fn(n_fft)
-    return torch.real(torch.stft(audio, n_fft, hop_length, window=window, return_complex=True))
+    spec = torch.stft(audio, n_fft, hop_length, window=window, return_complex=True)
+
+    if discard_phase:
+        return torch.abs(spec)
+
+    return spec
+
+
+def complex_spectrogram_to_audio(
+    complex_spectrogram: torch.Tensor,
+    n_fft: int = STFT_CONFIG["n_fft"],
+    hop_length: int = STFT_CONFIG["hop_length"],
+    window_fn: Callable = STFT_CONFIG["window_fn"],
+) -> torch.Tensor:
+    """Passes through to `torch.istft()`
+
+    Refer to "https://pytorch.org/docs/stable/generated/torch.istft.html".
+
+    """
+    window = window_fn(n_fft)
+    return torch.istft(
+        complex_spectrogram, n_fft, hop_length, window=window, return_complex=False
+    )
 
 
 def audio_to_mono(audio: torch.Tensor) -> torch.Tensor:
@@ -106,7 +129,7 @@ def audio_to_mono(audio: torch.Tensor) -> torch.Tensor:
 
 
 def merge_to_multichannel(*audio: torch.Tensor) -> torch.Tensor:
-    """Merge multiple tensors into one multichannel tensor
+    """Merge multiple audio tensors into one multichannel tensor
 
     All channels need to be of the same length, and it is assumed they
     are of the same sample rate.
