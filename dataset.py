@@ -17,7 +17,7 @@ class AudioDataset(Dataset):
         audio_path = self.attributes.iloc[index, 1]
         spec_path = self.attributes.iloc[index, 4]
         audio_tensor, _ = audio.load_audio(audio_path, "merge")
-        spec = spectrogram.load_spectrogram_tiff(spec_path)
+        spec = spectrogram.load_spectrogram(spec_path)
         return audio_tensor, spec
 
 

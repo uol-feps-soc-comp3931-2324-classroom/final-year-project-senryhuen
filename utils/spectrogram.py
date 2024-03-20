@@ -8,7 +8,7 @@ import skimage
 def load_spectrogram(filepath: str) -> torch.Tensor:
     """Load a spectrogram from an image to a torch.Tensor
 
-    Supports: .tiff, .png
+    Supports: .tiff, .png, .jpg, .jpeg
 
     Args:
         filepath (str): filepath to spectrogram image to load.
@@ -23,7 +23,7 @@ def load_spectrogram(filepath: str) -> torch.Tensor:
 
     """
     # check filepath is for a supported image format
-    supported_exts = [".tiff", ".png"]
+    supported_exts = [".tiff", ".png", ".jpg", ".jpeg"]
     ext = os.path.splitext(filepath)[1].lower()
     if ext not in supported_exts:
         raise ValueError(f"Invalid filepath '{filepath}', '{ext}' is not a supported image format")
@@ -31,7 +31,7 @@ def load_spectrogram(filepath: str) -> torch.Tensor:
     img = skimage.io.imread(filepath)
     img = img.astype(np.float32)
 
-    if ext == ".png":
+    if ext != ".tiff":
         img = np.expand_dims(img, 0)
         img = (img - 128) / 3
 
@@ -43,7 +43,7 @@ def load_spectrogram(filepath: str) -> torch.Tensor:
 def save_spectrogram(spectrogram: torch.Tensor, save_path: str):
     """Save a spectrogram (from `torch.stft()`) as an image
 
-    Supports saving as: .tiff, .png
+    Supports saving as: .tiff, .png, .jpg, .jpeg
 
     Args:
         spectrogram (torch.Tensor): spectrogram in the same format as
@@ -56,7 +56,7 @@ def save_spectrogram(spectrogram: torch.Tensor, save_path: str):
 
     """
     # check save_path is for a supported image format
-    supported_exts = [".tiff", ".png"]
+    supported_exts = [".tiff", ".png", ".jpg", ".jpeg"]
     ext = os.path.splitext(save_path)[1].lower()
     if ext not in supported_exts:
         raise ValueError(f"Invalid save_path '{save_path}', '{ext}' is not a supported image format")
@@ -75,8 +75,8 @@ def save_spectrogram(spectrogram: torch.Tensor, save_path: str):
     img = librosa.amplitude_to_db(img, ref=1)
     img = np.flip(img, axis=1)  # flip so frequency is increasing instead (along x-axis)
 
-    if ext == ".png":
-        # grayscale PNG stores 8bit integer values, scale spectrogram to this range
+    if ext != ".tiff":
+        # pixels are 8bit integer values, scale spectrogram to this range
         img = (( (img - img.min()) / (img.max() - img.min()) ) * 255).astype(np.uint8)
 
     skimage.io.imsave(save_path, img)

@@ -57,7 +57,6 @@ def main():
     else:
         audio_tensor = griffinlim(spec, args.iterations)
 
-    # currently only supports expected .tiff type image format
     audio.save_audio(args.output_audio_filepath, audio_tensor, args.sample_rate)
 
     # calculate and print rmse/snr depending on args
