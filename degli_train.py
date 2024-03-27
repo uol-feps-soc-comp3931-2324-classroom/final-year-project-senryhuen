@@ -8,8 +8,16 @@ from dataset import DNNDataset
 
 # load model
 model = DNN()
-mps_device = torch.device("mps")
-model.to(mps_device)
+model.train()
+
+device = None
+if torch.backends.mps.is_available():
+    device = torch.device("mps")
+else:
+    print("no device found, falling back to CPU")
+
+if device:
+    model.to(device)
 
 # load/split dataset
 data = DNNDataset()
@@ -20,42 +28,57 @@ test_loader = DataLoader(testset, batch_size=1, shuffle=False)
 
 # training params
 criterion = torch.nn.L1Loss()
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-6)
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1, 10**-0.5)
+
+# TODO: load saved model weights
 
 # training loop
-# TODO: multiple epochs?
-# TODO: load saved model weights
 best_loss = None
 num_batches = len(train_loader)
-for it in range(num_batches):
-    start = time.time()
-    print(f"Iteration: {it+1} out of {num_batches}")
+num_epochs = 50
+for epoch in range(num_epochs):
+    for it, (inputdata, target) in enumerate(train_loader):
+        start = time.time()
+        print(f"Iteration: {it+1} out of {num_batches}")
 
-    # load inputdata and target
-    inputdata, target = next(iter(train_loader))
-    inputdata = inputdata.to(mps_device)
-    target = target.to(mps_device)
+        # check target doesn't contain any NaNs
+        if torch.isnan(target).any().item():
+            print("target is NaN\n")
+            continue
 
-    # get prediction for inputdata
-    y_pred = model(inputdata)
+        # move inputdata and target to device
+        if device:
+            inputdata = inputdata.to(device)
+            target = target.to(device)
 
-    # print loss between prediction and target
-    loss = criterion(y_pred, target)
-    loss_val = loss.item()
-    print(f"loss: {loss_val}")
+        optimizer.zero_grad()
 
-    print("updating weights...")
+        # get prediction for inputdata
+        y_pred = model(inputdata)
 
-    # zero gradients, backward pass, update weights
-    optimizer.zero_grad()
-    loss.backward()
-    optimizer.step()
+        if torch.isnan(y_pred).any().item():
+            print("y_pred is NaN\n")
+            continue
 
-    # save model if lower loss
-    if not best_loss or loss_val < best_loss:
-        best_loss = loss_val
-        print("saving model weights...")
-        torch.save(model.state_dict(), "spectrograminversion/degli_dnn_state.pt")
+        # compute/print loss between prediction and target
+        loss = criterion(y_pred, target)
+        loss_val = loss.item()
+        print(f"loss: {loss_val}")
 
-    end = time.time()
-    print(f"done in {end-start}s\n")
+        print("updating weights...")
+
+        # backward pass, update weights
+        loss.backward()
+        optimizer.step()
+
+        # save model if lower loss
+        if not best_loss or loss_val < best_loss:
+            best_loss = loss_val
+            print("saving model weights...")
+            torch.save(model.state_dict(), "spectrograminversion/degli_dnn_state.pt")
+
+        end = time.time()
+        print(f"done in {end-start}s\n")
+
+    scheduler.step()
