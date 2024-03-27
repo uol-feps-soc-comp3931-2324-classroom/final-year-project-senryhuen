@@ -6,28 +6,33 @@ def _to_decibel(num):
     return 10 * np.log10(num)
 
 
-def rmse(tensor: torch.Tensor, other_tensor: torch.Tensor) -> float:
+def rmse(tensor: torch.Tensor, other_tensor: torch.Tensor, scale: bool = True) -> float:
     """Root-mean-squared-error between `tensor` and `other_tensor`
 
     Both tensors' values are scaled to be between 0 and 1 for fair
     comparison. This also allows the RMSE to be expressed as a
-    percentage easily (multiply by 100).
+    percentage easily (multiply by 100). This can be disabled by
+    setting `scale` to False.
 
     """
-    tensor = make_equal_scale(tensor)
-    other_tensor = make_equal_scale(other_tensor)
+    if scale:
+        tensor = make_equal_scale(tensor)
+        other_tensor = make_equal_scale(other_tensor)
+
     return np.sqrt(torch.mean(torch.square(tensor - other_tensor)))
 
 
-def snr(tensor: torch.Tensor, other_tensor: torch.Tensor) -> float:
+def snr(tensor: torch.Tensor, other_tensor: torch.Tensor, scale: bool = True) -> float:
     """Signal-to-noise ratio of `other_tensor` to `tensor`
 
     Both tensors' values are scaled to be between 0 and 1 for fair
-    comparison.
+    comparison. This can be disabled by setting `scale` to false.
 
     """
-    tensor = make_equal_scale(tensor)
-    other_tensor = make_equal_scale(other_tensor)
+    if scale:
+        tensor = make_equal_scale(tensor)
+        other_tensor = make_equal_scale(other_tensor)
+
     return _to_decibel(
         torch.sum(torch.square(tensor)) / torch.sum(torch.square(tensor - other_tensor))
     ).item()
@@ -69,9 +74,15 @@ def make_equal_scale(tensor: torch.Tensor) -> torch.Tensor:
             float32, but no specific shape required since all values
             will be scaled.
 
+    Raises:
+        ValueError: if `tensor` is not of expected type float32.
+            
     Returns:
         torch.Tensor: new tensor with same shape and type as `tensor`,
             but with values scaled to be between 0 and 1.
 
     """
+    if tensor.dtype != torch.float32:
+        raise ValueError("Expected type of `tensor` to be float32")
+
     return (tensor - tensor.min()) / (tensor.max() - tensor.min())
