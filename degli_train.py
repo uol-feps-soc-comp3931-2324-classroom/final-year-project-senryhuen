@@ -1,4 +1,4 @@
-# import os
+import os
 import time
 import torch
 from torch.utils.data import random_split, DataLoader
@@ -12,9 +12,6 @@ MODEL_PATH = "spectrograminversion/degli_dnn_state.pt"
 
 # load model
 model = DNN()
-# if os.path.exists(MODEL_PATH):
-#     model.load_state_dict(torch.load(MODEL_PATH, map_location=torch.device("cpu")))
-
 model.train()
 
 # pick device
@@ -92,3 +89,54 @@ for epoch in range(num_epochs):
         del target
 
     scheduler.step()
+
+
+# avg loss of best model on test set
+if os.path.exists(MODEL_PATH):
+    model.cpu()
+    model.load_state_dict(torch.load(MODEL_PATH, map_location=torch.device("cpu")))
+
+    # pick device
+    device = None
+    if torch.backends.mps.is_available():
+        device = torch.device("mps")
+    elif torch.cuda.is_available():
+        device = torch.device("cuda:0")
+    else:
+        print("no device found, falling back to CPU")
+
+    if device:
+        model.to(device)
+
+model.eval()
+
+num_batches = len(test_loader)
+loss_total = 0
+num_its = 0
+for it, (inputdata, target) in enumerate(test_loader):
+    # check target doesn't contain any NaNs
+    if torch.isnan(target).any().item():
+        continue
+
+    # move inputdata and target to device
+    if device:
+        inputdata = inputdata.to(device)
+        target = target.to(device)
+
+    # get prediction for inputdata
+    with torch.no_grad():
+        y_pred = model(inputdata)
+
+    if torch.isnan(y_pred).any().item():
+        continue
+
+    # compute/print loss between prediction and target
+    loss = criterion(y_pred, target)
+    loss_val = loss.item()
+    loss_total += loss_val
+    num_its += 1
+
+    del inputdata
+    del target
+
+print(f"test set avg loss: {loss_total / num_batches}")
