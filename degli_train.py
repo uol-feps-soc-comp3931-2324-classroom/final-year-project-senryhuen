@@ -1,3 +1,4 @@
+# import os
 import time
 import torch
 from torch.utils.data import random_split, DataLoader
@@ -6,13 +7,22 @@ from spectrograminversion import DNN
 from dataset import DNNDataset
 
 
+MODEL_PATH = "spectrograminversion/degli_dnn_state.pt"
+
+
 # load model
 model = DNN()
+# if os.path.exists(MODEL_PATH):
+#     model.load_state_dict(torch.load(MODEL_PATH, map_location=torch.device("cpu")))
+
 model.train()
 
+# pick device
 device = None
 if torch.backends.mps.is_available():
     device = torch.device("mps")
+elif torch.cuda.is_available():
+    device = torch.device("cuda:0")
 else:
     print("no device found, falling back to CPU")
 
@@ -24,14 +34,11 @@ data = DNNDataset()
 trainset, testset = random_split(data, [0.9, 0.1])
 train_loader = DataLoader(trainset, batch_size=64, shuffle=True)
 test_loader = DataLoader(testset, batch_size=1, shuffle=False)
-# TODO: split validation set?
 
 # training params
 criterion = torch.nn.L1Loss()
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1, 10**-0.5)
-
-# TODO: load saved model weights
 
 # training loop
 best_loss = None
@@ -76,9 +83,12 @@ for epoch in range(num_epochs):
         if not best_loss or loss_val < best_loss:
             best_loss = loss_val
             print("saving model weights...")
-            torch.save(model.state_dict(), "spectrograminversion/degli_dnn_state.pt")
+            torch.save(model.state_dict(), MODEL_PATH)
 
         end = time.time()
         print(f"done in {end-start}s\n")
+
+        del inputdata
+        del target
 
     scheduler.step()
