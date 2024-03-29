@@ -1,7 +1,7 @@
 import argparse
 
 from utils import audio, spectrogram, evaluation
-from spectrograminversion import griffinlim
+from spectrograminversion import griffinlim, deepgriffinlim
 
 
 def main():
@@ -54,10 +54,11 @@ def main():
     # audio reconstruction using method chosen from args
     if args.method == "griffinlim":
         audio_tensor = griffinlim(spec, args.iterations)
+    elif args.method == "deepgriffinlim":
+        audio_tensor = deepgriffinlim(spec, args.iterations).detach()
     else:
         audio_tensor = griffinlim(spec, args.iterations)
 
-    # currently only supports expected .tiff type image format
     audio.save_audio(args.output_audio_filepath, audio_tensor, args.sample_rate)
 
     # calculate and print rmse/snr depending on args

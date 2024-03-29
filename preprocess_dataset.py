@@ -1,6 +1,5 @@
 import os
 import torch
-import numpy as np
 import pandas as pd
 
 from utils import audio, spectrogram
@@ -108,22 +107,17 @@ def precompute_DNN_dataset(
         audio.audio_to_mono(audio_tensor), discard_phase=False
     )
 
-    # adding noise to simulating lossiness from previous reconstruction iterations
-    gauss_noise = torch.complex(
-        torch.randn_like(torch.real(complex_spec)),
-        torch.randn_like(torch.imag(complex_spec)),
+    # adding noise (random error between +/- 10%) to simulate lossiness from previous reconstruction iterations
+    noise_added_spec = torch.complex(
+        (0.9 + (torch.randn_like(torch.real(complex_spec)) / 5))
+        * torch.real(complex_spec),
+        (0.9 + (torch.randn_like(torch.imag(complex_spec)) / 5))
+        * torch.imag(complex_spec),
     )
-
-    random_snr = _reverse_decibel(np.random.rand() * -30)
-    noise_scaling_factor = torch.sqrt(
-        torch.mean(torch.abs(complex_spec).square())
-        / (torch.mean(torch.abs(gauss_noise).square()) * random_snr)
-    )
-    noise_added_spec = complex_spec + (noise_scaling_factor * gauss_noise)
 
     # first GLA-inspired layer in DeGLI sub block (P_A)
-    amplitude_replaced_spec = np.abs(complex_spec) * (
-        noise_added_spec / torch.abs(noise_added_spec)
+    amplitude_replaced_spec = noise_added_spec * (
+        torch.abs(complex_spec) / torch.abs(noise_added_spec)
     )
 
     # second GLA-inspired layer in DeGLI sub block (P_C)

@@ -25,8 +25,19 @@ def deepgriffinlim(spec: torch.Tensor, n_iter: int = 30) -> torch.Tensor:
 
     """
     model = DNN()
-    model.load_state_dict(torch.load("spectrograminversion/degli_dnn_state.pt"))
+    model.load_state_dict(torch.load("spectrograminversion/degli_dnn_state.pt", map_location=torch.device("cpu")))
     model.eval()
+
+    device = None
+    if torch.backends.mps.is_available():
+        device = torch.device("mps")
+    elif torch.cuda.is_available():
+        device = torch.device("cuda:0")
+    else:
+        print("no device found, falling back to CPU")
+
+    if device:
+        model.to(device)
 
     # create initial estimate
     est_complex_spectrogram = audio.audio_to_spectrogram(
@@ -52,9 +63,19 @@ def deepgriffinlim(spec: torch.Tensor, n_iter: int = 30) -> torch.Tensor:
             )
         )
 
+        if device:
+            input_tensor = input_tensor.to(device)
+
         # estimate residual with DNN model, subtract from griffinlim estimate
-        residual = model(torch.unsqueeze(input_tensor, 0))
+        with torch.no_grad():
+            residual = model(torch.unsqueeze(input_tensor, 0))
+
+        if device:
+            residual = residual.cpu()
+
         residual = spectrogram.merge_separate_phase_channel(residual[0])
         est_complex_spectrogram = griffinlim_1_iter - residual
+
+        del input_tensor
 
     return audio.complex_spectrogram_to_audio(est_complex_spectrogram)
