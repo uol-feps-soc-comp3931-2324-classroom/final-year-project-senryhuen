@@ -120,3 +120,54 @@ class TestAudioModule(unittest.TestCase):
 
         audio_tensor_merged = audio.merge_to_multichannel(audio_tensor, audio_tensor_2)
         self.assertEqual(audio_tensor_merged.shape[0], 2)
+
+    def test_split_monochannel_audio(self):
+        audio_tensor, sample_rate = audio.load_audio(TEST_WAV, multichannel="keep")
+        clips = audio.split_audio(audio_tensor, sample_rate)
+        self.assertEqual(len(clips), 1)
+        self.assertTrue(torch.equal(audio_tensor, clips[0]))
+
+    def test_split_multichannel_audio(self):
+        audio_tensor, sample_rate = audio.load_audio(TEST_FLAC, multichannel="keep")
+        clips = audio.split_audio(audio_tensor, sample_rate)
+        self.assertEqual(len(clips), 1)
+        self.assertTrue(torch.equal(audio_tensor, clips[0]))
+
+    def test_split_audio_2s(self):
+        audio_tensor, sample_rate = audio.load_audio(TEST_WAV, multichannel="keep")
+        clips = audio.split_audio(
+            audio_tensor, sample_rate, segment_length=2
+        )
+        self.assertEqual(len(clips), 2)
+        self.assertEqual(list(clips[0].shape), [1, 2 * sample_rate])
+        self.assertEqual(list(clips[1].shape), [1, 2 * sample_rate])
+
+    def test_split_audio_invalid_0s(self):
+        audio_tensor, sample_rate = audio.load_audio(TEST_WAV, multichannel="keep")
+        clips = audio.split_audio(
+            audio_tensor, sample_rate, segment_length=0
+        )
+        self.assertEqual(len(clips), 0)
+
+    def test_split_audio_invalid_negative(self):
+        audio_tensor, sample_rate = audio.load_audio(TEST_WAV, multichannel="keep")
+        clips = audio.split_audio(
+            audio_tensor, sample_rate, segment_length=-5
+        )
+        self.assertEqual(len(clips), 0)
+
+    def test_split_audio_invalid_100s(self):
+        audio_tensor, sample_rate = audio.load_audio(TEST_WAV, multichannel="keep")
+        clips = audio.split_audio(
+            audio_tensor, sample_rate, segment_length=100
+        )
+        self.assertEqual(len(clips), 0)
+
+    def test_split_audio_fixed_samplerate(self):
+        audio_tensor, _ = audio.load_audio(TEST_WAV, multichannel="keep")
+        clips = audio.split_audio_fixed(audio_tensor, 32000)
+        self.assertEqual(len(clips), 2)
+        self.assertEqual(list(clips[0].shape), [1, 32000])
+        self.assertEqual(list(clips[1].shape), [1, 32000])
+
+

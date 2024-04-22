@@ -10,9 +10,12 @@ data/orig_audio/music/*
 data/orig_audio/speech/*
 !data/orig_audio/speech/README.md
 
+data/eval_audio/*
 data/audio/*
 data/spectrograms/*
 data/DNN_precomputed/*
+
+evaluationdata/*
 
 attributes.csv
 

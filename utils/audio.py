@@ -148,3 +148,73 @@ def merge_to_multichannel(*audio: torch.Tensor) -> torch.Tensor:
 
     """
     return torch.cat(audio, 0)
+
+
+def split_audio(
+    audio_tensor: torch.Tensor, sample_rate: int, segment_length: int = 5
+) -> list:
+    """Split `audio_tensor` into audio tensors of `segment_length`
+
+    If `audio_tensor` does not divide by `segment_length` perfectly,
+    the last segment is discarded.
+
+    Args:
+        audio_tensor (torch.Tensor): tensor with dimensions
+            [channels, time], where each element in the first dimension
+            is a channel, and each element in that element (second
+            dimension) is an amplitude value at a point in time.
+        sample_rate (int): sample rate of `audio_tensor`.
+        segment_length (int, optional): desired length of audio
+            segments in seconds. Defaults to 5.
+
+    Returns:
+        list: list of audio tensors, each being a segment from
+            `audio_tensor`.
+
+    """
+    segments = []
+
+    if segment_length <= 0 or sample_rate <= 0:
+        return segments
+
+    increment = segment_length * sample_rate
+    return split_audio_fixed(audio_tensor, increment)
+
+
+def split_audio_fixed(
+    audio_tensor: torch.Tensor, samples_per_segment: int = 2**15
+) -> list:
+    """Split `audio_tensor` into audio tensors with fixed no. samples
+
+    If `audio_tensor` does not divide by `samples_per_segment`
+    perfectly, the last segment is discarded.
+
+    Args:
+        audio_tensor (torch.Tensor): tensor with dimensions
+            [channels, time], where each element in the first dimension
+            is a channel, and each element in that element (second
+            dimension) is an amplitude value at a point in time.
+        samples_per_segment (int, optional): desired number of samples
+            per audio segments. Defaults to 2**15.
+
+    Returns:
+        list: list of audio tensors, each being a segment from
+            `audio_tensor`.
+
+    """
+    segments = []
+
+    if samples_per_segment <= 0:
+        return segments
+
+    start = 0
+    end = samples_per_segment
+
+    while end <= audio_tensor.shape[-1]:
+        segments.append(audio_tensor[:, start:end])
+        start += samples_per_segment
+        end += samples_per_segment
+
+    return segments
+
+
