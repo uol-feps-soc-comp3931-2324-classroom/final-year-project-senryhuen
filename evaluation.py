@@ -47,6 +47,8 @@ if os.path.exists(TMP_DIR):
 
 os.makedirs(TMP_DIR)
 
+if not os.path.exists("evaluationdata"):
+    os.makedirs("evaluationdata")
 
 # create pandas dataframe
 img_formats = ["jpg", "png", "tiff"]
