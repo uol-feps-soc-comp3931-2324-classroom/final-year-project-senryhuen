@@ -225,11 +225,12 @@ img_format_colours = [
     ("cyan", "darkcyan"),
     ("darkseagreen", "seagreen"),
 ]
-metrics_better = zip(["snr", "rmse"], ["higher", "lower"])
+metrics = ["snr", "rmse"]
+metrics_better = ["higher", "lower"]
 
 
 # graph: x = num its, y = SNR/RMSE, per each image format
-for metric, better in metrics_better:
+for metric, better in zip(metrics, metrics_better):
     fig, ax = plt.subplots()
 
     for img_format, colour in zip(img_formats, img_format_colours):
@@ -275,7 +276,7 @@ for metric, better in metrics_better:
 
 
 # graph: x = time, y = SNR/RMSE, per each image format
-for metric, better in metrics_better:
+for metric, better in zip(metrics, metrics_better):
     fig, ax = plt.subplots()
 
     for img_format, colour in zip(img_formats, img_format_colours):
@@ -343,7 +344,7 @@ pd.DataFrame(avg_times).to_csv("evaluationdata/avgTimePerIt.csv")
 
 
 # graph: x = file size, y = SNR/RMSE
-for metric, better in metrics_better:
+for metric, better in zip(metrics, metrics_better):
     fig, ax = plt.subplots()
 
     for img_format, marker in zip(img_formats, ["o", "s", "^"]):
