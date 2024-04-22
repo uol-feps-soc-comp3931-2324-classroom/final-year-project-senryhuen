@@ -19,7 +19,7 @@ def rmse(tensor: torch.Tensor, other_tensor: torch.Tensor, scale: bool = True) -
         tensor = make_equal_scale(tensor)
         other_tensor = make_equal_scale(other_tensor)
 
-    return np.sqrt(torch.mean(torch.square(tensor - other_tensor)))
+    return np.sqrt(torch.mean(torch.square(tensor - other_tensor))).item()
 
 
 def snr(tensor: torch.Tensor, other_tensor: torch.Tensor, scale: bool = True) -> float:
