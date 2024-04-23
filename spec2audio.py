@@ -26,7 +26,7 @@ def main():
         "--method",
         type=str,
         default="griffinlim",
-        help="method of audio reconstruction to use, available options: 'griffinlim', 'TBC' (default: 'griffinlim')",
+        help="method of audio reconstruction to use, available options: 'griffinlim', 'deepgriffinlim' (default: 'griffinlim')",
     )
     parser.add_argument(
         "-it",
