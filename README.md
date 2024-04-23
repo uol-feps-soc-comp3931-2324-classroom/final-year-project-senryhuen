@@ -25,6 +25,11 @@ Example reconstructing audio from spectrogram image:
 ```
 python spec2audio.py demo/133028mono.tiff demo/133028-tiffrecon.flac 44100 -rmse -snr -it 300
 ```
+
+Example getting evaluation metrics of reconstructed audio:
+```
+python eval_spec.py demo/133028mono.tiff demo/133028-tiffrecon.flac
+```
 \
 The original and reconstructed audio is shown below. Due to GitHub not having support for audio files, the audio is muxed into a video container (lossless) with the spectrogram as the cover.
 
