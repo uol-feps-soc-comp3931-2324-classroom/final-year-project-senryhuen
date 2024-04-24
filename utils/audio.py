@@ -10,7 +10,7 @@ STFT_CONFIG = {
     "n_fft": 2048,
     "hop_length": 512,
     "window_length": 2048,
-    "window_fn": torch.hamming_window,
+    "window_fn": torch.hann_window,
 }
 
 
